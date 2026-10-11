@@ -137,3 +137,19 @@ A sequência abaixo organiza os itens existentes por dependência prática; não
 - Quais códigos de saída e níveis de severidade serão usados em terminal, JSON e SARIF.
 - Quais casos documentados exigem full reload e como serão representados no diagnóstico.
 - Quais equipes participarão dos pilotos e como será medida a taxa aceitável de falsos positivos.
+
+
+## 10. Estado de implementação (checkpoint de 2026-10-11)
+
+| Área | Status verificável | Limite atual |
+|---|---|---|
+| Contrato sanitizado e parser | Implementado e coberto por smoke tests. | Só observa os campos v1 definidos. |
+| Fixtures Playwright controladas | Implementadas em dois apps .NET 10: Interactive Server com cookie sintético e app Static SSR oficial separado. | Não são login de usuário nem fluxo OIDC; faltam reconexão e cobertura ampla de render modes. |
+| Probe de componente Blazor | `AuthStateDoctor.Blazor` preview; emite só booleano do `AuthenticationStateProvider`; `Enabled=false` por padrão. | Observa estado de UI, não autorização no servidor. |
+| Comparação UI/servidor | Fixture usa os probes opt-in da biblioteca: componente UI e endpoint server-side local. | A fixture ainda não valida configuração ou policies de uma aplicação externa. |
+| Empacotamento NuGet | Pacote `0.2.0-preview.1` criado e validado localmente. | Não publicado em registry público. |
+| Relatórios e CI | CLI produz terminal/JSON/SARIF; workflow gera artifacts sanitizados. | As execuções do PR #3 terminaram antes de alocar runner (`runner_id=0`, sem logs); CI remota permanece não validada. |
+| Multiaba | Um cenário sintético cobre cookie compartilhado, circuito obsoleto após logout e reload convergente. | Não é matriz geral de browser/IdP/render mode. |
+| OIDC e reconexão | Não implementados. | Requer fixture/IdP e matriz de teste dedicada. |
+
+A próxima etapa escolhida é um runner de conexão a uma aplicação não produtiva sem assumir seletores, protocolo de login ou credenciais: observará apenas as sondas opt-in e manterá a autenticação sob controle do desenvolvedor. A integração seguirá em branch/PR, sem publicar o pacote ou modificar `main` diretamente.

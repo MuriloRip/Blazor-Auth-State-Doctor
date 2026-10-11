@@ -1,0 +1,47 @@
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    padding: 1.5rem;
+    color: #202124;
+    background: #fff;
+    font-family: system-ui, sans-serif;
+}
+
+header,
+main {
+    max-width: 48rem;
+    margin: 0 auto;
+}
+
+header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid #d9dce1;
+}
+
+nav {
+    display: flex;
+    gap: 1rem;
+}
+
+a {
+    color: #075fcc;
+}
+
+main {
+    padding-top: 1.5rem;
+}
+
+button {
+    padding: 0.5rem 0.75rem;
+}
+
+#blazor-error-ui {
+    display: none;
+}

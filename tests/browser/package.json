@@ -1,0 +1,12 @@
+{
+  "name": "auth-state-doctor-browser-fixture",
+  "version": "0.2.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node run-fixture.mjs"
+  },
+  "devDependencies": {
+    "playwright": "^1.64.0"
+  }
+}

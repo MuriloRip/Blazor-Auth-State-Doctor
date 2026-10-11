@@ -1,0 +1,28 @@
+﻿@page "/"
+
+<PageTitle>Auth State Doctor Fixture</PageTitle>
+
+<h1>Auth State Doctor — fixture controlada</h1>
+<p>Aplicação sintética de diagnóstico. Não use credenciais ou dados reais.</p>
+
+<p data-testid="hydration-state" data-hydrated="@_hydrated.ToString().ToLowerInvariant()">Hydration: @_hydrated</p>
+<p data-testid="interactive-count">Interações: @_interactionCount</p>
+<button data-testid="interactive-probe" @onclick="Increment">Verificar interatividade</button>
+
+@code {
+    private bool _hydrated;
+    private int _interactionCount;
+
+    private void Increment() => _interactionCount++;
+
+    protected override Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _hydrated = true;
+            StateHasChanged();
+        }
+
+        return Task.CompletedTask;
+    }
+}
