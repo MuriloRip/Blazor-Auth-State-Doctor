@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/MuriloRip/Blazor-Auth-State-Doctor/blob/main/schemas/authdoctor-trace-v1.schema.json",
+  "title": "Auth State Doctor trace v1",
+  "type": "object",
+  "required": ["schema", "observations"],
+  "properties": {
+    "schema": { "const": "authdoctor-trace/v1" },
+    "observations": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 10000,
+      "items": {
+        "type": "object",
+        "required": ["scenarioId", "transition", "elapsedMs", "serverAuthenticated", "uiAuthenticated", "expectation"],
+        "properties": {
+          "scenarioId": { "type": "string", "pattern": "^[A-Za-z0-9_-]{1,64}$" },
+          "transition": { "enum": ["prerender", "hydrate", "login", "logout", "hard-refresh", "enhanced-navigation", "reconnect", "second-tab"] },
+          "elapsedMs": { "type": "integer", "minimum": 0, "maximum": 86400000 },
+          "serverAuthenticated": { "type": "boolean" },
+          "uiAuthenticated": { "type": "boolean" },
+          "expectation": { "enum": ["converge", "full-reload-required"] }
+        },
+        "additionalProperties": true
+      }
+    }
+  },
+  "additionalProperties": true
+}

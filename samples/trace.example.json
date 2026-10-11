@@ -1,0 +1,29 @@
+{
+  "schema": "authdoctor-trace/v1",
+  "observations": [
+    {
+      "scenarioId": "login-basic",
+      "transition": "login",
+      "elapsedMs": 0,
+      "serverAuthenticated": true,
+      "uiAuthenticated": true,
+      "expectation": "converge"
+    },
+    {
+      "scenarioId": "logout-enhanced-nav",
+      "transition": "enhanced-navigation",
+      "elapsedMs": 120,
+      "serverAuthenticated": false,
+      "uiAuthenticated": true,
+      "expectation": "full-reload-required"
+    },
+    {
+      "scenarioId": "logout-hard-refresh",
+      "transition": "hard-refresh",
+      "elapsedMs": 280,
+      "serverAuthenticated": false,
+      "uiAuthenticated": false,
+      "expectation": "converge"
+    }
+  ]
+}
