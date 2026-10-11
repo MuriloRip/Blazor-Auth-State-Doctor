@@ -135,11 +135,22 @@ async function main() {
     if (!response?.ok()) throw new Error('initial-page-failed');
 
     const prerenderHtml = await response.text();
-    const prerenderMatch = prerenderHtml.match(/data-testid="auth-state"\s+data-authenticated="(true|false)"/);
+    const prerenderMatch = prerenderHtml.match(/data-authdoctor-probe="v1"\s+data-authenticated="(true|false)"/);
     if (!prerenderMatch) throw new Error('prerender-state-missing');
     record('prerender', false, prerenderMatch[1] === 'true');
 
-    await page.getByTestId('auth-state').waitFor({ state: 'visible', timeout: maxWaitMs });
+    const probeLocator = page.locator('[data-authdoctor-probe="v1"]');
+    await probeLocator.waitFor({ state: 'attached', timeout: maxWaitMs });
+    if (await probeLocator.count() !== 1) throw new Error('probe-default-opt-in-invalid');
+    phase = 'probe-shape';
+    const probeShape = await probeLocator.evaluate(element => ({
+      attributes: Array.from(element.attributes).map(attribute => attribute.name).sort(),
+      hasChildren: element.childElementCount !== 0,
+      hasText: element.textContent.trim().length !== 0
+    }));
+    if (JSON.stringify(probeShape.attributes) !== JSON.stringify(['aria-hidden', 'data-authdoctor-probe', 'data-authenticated', 'hidden'])
+      || probeShape.hasChildren || probeShape.hasText) throw new Error('probe-contract-invalid');
+
     phase = 'hydration-marker';
     await page.waitForFunction(() => document.querySelector('[data-testid="hydration-state"]')?.getAttribute('data-hydrated') === 'true', null, { timeout: maxWaitMs });
     phase = 'interactive-event';
@@ -214,7 +225,7 @@ async function readServerState(page) {
 }
 
 async function readUiState(page) {
-  const value = await page.getByTestId('auth-state').getAttribute('data-authenticated');
+  const value = await page.locator('[data-authdoctor-probe="v1"]').getAttribute('data-authenticated');
   return value === 'true' ? true : value === 'false' ? false : null;
 }
 
@@ -229,7 +240,7 @@ async function waitForServerState(page, expected) {
 
 async function waitForUiState(page, expected) {
   await page.waitForFunction(wanted => {
-    return document.querySelector('[data-testid="auth-state"]')?.getAttribute('data-authenticated') === String(wanted);
+    return document.querySelector('[data-authdoctor-probe="v1"]')?.getAttribute('data-authenticated') === String(wanted);
   }, expected, { timeout: maxWaitMs });
 }
 

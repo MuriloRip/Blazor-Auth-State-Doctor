@@ -5,6 +5,8 @@
         <NavLink href="/" Match="NavLinkMatch.All" data-testid="nav-home">Início</NavLink>
         <NavLink href="/protected" data-testid="nav-protected">Área protegida sintética</NavLink>
     </nav>
+    <AuthStateProbe Enabled="true" />
+    <AuthStateProbe />
     <AuthorizeView>
         <Authorized>
             <div data-testid="auth-state" data-authenticated="true">Autenticado</div>

@@ -1,0 +1,114 @@
+@using Microsoft.AspNetCore.Components.Authorization
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@implements IDisposable
+
+@if (Enabled)
+{
+    <output data-authdoctor-probe="v1"
+            data-authenticated="@StateText"
+            aria-hidden="true"
+            hidden></output>
+}
+
+@code {
+    [Parameter]
+    public bool Enabled { get; set; }
+
+    private bool? _isAuthenticated;
+    private long _generation;
+    private volatile bool _disposed;
+    private bool _subscribed;
+
+    private string StateText => _isAuthenticated switch
+    {
+        true => "true",
+        false => "false",
+        _ => "unknown"
+    };
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (!Enabled)
+        {
+            StopObserving();
+            return;
+        }
+
+        if (_subscribed)
+        {
+            return;
+        }
+
+        _subscribed = true;
+        AuthenticationStateProvider.AuthenticationStateChanged += OnAuthenticationStateChanged;
+        var generation = Interlocked.Read(ref _generation);
+        await ApplyStateAsync(AuthenticationStateProvider.GetAuthenticationStateAsync(), generation);
+    }
+
+    private void OnAuthenticationStateChanged(Task<AuthenticationState> stateTask)
+    {
+        var generation = Interlocked.Increment(ref _generation);
+        _ = ApplyStateAsync(stateTask, generation);
+    }
+
+    private async Task ApplyStateAsync(Task<AuthenticationState> stateTask, long generation)
+    {
+        try
+        {
+            var state = await stateTask.ConfigureAwait(false);
+            if (_disposed)
+            {
+                return;
+            }
+
+            var authenticated = state.User.Identity?.IsAuthenticated == true;
+            await InvokeAsync(() =>
+            {
+                if (_disposed || !Enabled || !_subscribed
+                    || generation != Interlocked.Read(ref _generation) || _isAuthenticated == authenticated)
+                {
+                    return;
+                }
+
+                _isAuthenticated = authenticated;
+                StateHasChanged();
+            });
+        }
+        catch (OperationCanceledException) when (_disposed)
+        {
+            // Component disposal can cancel a provider task.
+        }
+        catch (ObjectDisposedException) when (_disposed)
+        {
+            // Ignore work queued after the renderer disposed this component.
+        }
+        catch (Exception exception)
+        {
+            if (_disposed)
+            {
+                return;
+            }
+
+            await DispatchExceptionAsync(exception);
+        }
+    }
+
+    public void Dispose()
+    {
+        _disposed = true;
+        StopObserving();
+    }
+
+    private void StopObserving()
+    {
+        if (!_subscribed)
+        {
+            return;
+        }
+
+        _subscribed = false;
+        Interlocked.Increment(ref _generation);
+        AuthenticationStateProvider.AuthenticationStateChanged -= OnAuthenticationStateChanged;
+        _isAuthenticated = null;
+    }
+}

@@ -1,8 +1,8 @@
 # Blazor Auth State Doctor
 
-CLI .NET para investigar divergências entre autorização observada no servidor e estado de autenticação exibido pela UI em aplicações Blazor. A versão atual combina inspeção heurística, replay de traces sanitizados e um harness de navegador local para uma fixture controlada.
+CLI .NET para investigar divergências entre autorização observada no servidor e estado de autenticação exibido pela UI em aplicações Blazor. O repositório combina inspeção heurística, replay de traces sanitizados, um harness local Playwright e uma pequena biblioteca Blazor opt-in.
 
-> **Estado:** harness lite. O Chromium exercita uma fixture .NET 10 com cookie sintético em loopback; nenhuma credencial real ou aplicação do usuário é acessada. Isso comprova o fluxo do laboratório, não cobertura de OIDC, todos os render modes, reconexão ou diagnóstico automático de aplicações arbitrárias.
+> **Estado:** preview lite. O Chromium exercita uma fixture .NET 10 com cookie sintético em loopback; nenhuma credencial real ou aplicação do usuário é acessada. A biblioteca fornece apenas uma observação booleana do estado visível ao componente. Isso ainda não é cobertura de OIDC, de todos os render modes, reconexão ou diagnóstico automático de aplicações arbitrárias.
 
 ## Requisitos
 
@@ -21,12 +21,19 @@ dotnet run --project src/AuthStateDoctor -- test --trace /tmp/authdoctor-browser
 
 O runner publica a fixture em diretório temporário, inicia o servidor em `127.0.0.1`, verifica uma tentativa POST com `Origin` externo, exercita prerender/hydration/login/logout/enhanced navigation/hard refresh e encerra navegador e servidor. O trace guarda só identificador sintético, transição, tempo relativo, dois booleanos e expectativa declarada. Não inclui cookies, tokens, claims, HTML ou dados pessoais.
 
-A fixture usa um usuário sintético e **não solicita nem aceita credenciais**. Seus endpoints de teste exigem loopback e POST same-origin. O cookie é HttpOnly, SameSite=Strict e expira em 15 minutos. Não instale esses endpoints numa aplicação real.
+A fixture usa um usuário sintético e **não solicita nem aceita credenciais**. Seus endpoints de teste exigem loopback e POST same-origin. O cookie é HttpOnly, SameSite=Strict, não deslizante e expira em 15 minutos. Não instale esses endpoints numa aplicação real.
 
-## Compilar e inspecionar
+## Adapter opt-in para Blazor
+
+O projeto [`AuthStateDoctor.Blazor`](src/AuthStateDoctor.Blazor/AuthStateDoctor.Blazor.csproj) contém `<AuthStateProbe>`, que expõe somente `true`/`false`/`unknown` do `AuthenticationStateProvider` através de um atributo DOM oculto. `Enabled` é `false` por padrão: componente desabilitado não produz markup nem assina eventos.
+
+O preview NuGet ainda não foi publicado. Consulte [`docs/adapter-integration.md`](docs/adapter-integration.md) para criar pacote local e habilitar a sonda somente em Development/teste. Não a habilite em produção: scripts da mesma origem podem ler o atributo. A sonda não acessa claims/cookies/tokens e **não prova autorização server-side**.
+
+## Compilar, empacotar e inspecionar
 
 ```bash
 dotnet build src/AuthStateDoctor/AuthStateDoctor.csproj --configuration Release
+dotnet pack src/AuthStateDoctor.Blazor/AuthStateDoctor.Blazor.csproj --configuration Release --output ./artifacts/nuget
 dotnet run --project src/AuthStateDoctor -- inspect /caminho/para/app-ou-pasta
 ```
 
@@ -56,15 +63,15 @@ Expectativas aceitas: `converge` e `full-reload-required`.
 bash tests/smoke.sh
 ```
 
-A suíte compila o CLI, exercita contrato/limites/redação, inicia Chromium e valida o trace real da fixture. A GitHub Action roda os mesmos testes e guarda JSON/SARIF sanitizados como artifacts; isso depende de runners Actions funcionais.
+A suíte compila a CLI e o adapter, empacota o preview NuGet sem publicá-lo, exercita contrato/limites/redação, inicia Chromium e valida o trace real da fixture. A GitHub Action roda os mesmos testes e guarda JSON/SARIF sanitizados como artifacts; isso depende de runners Actions funcionais.
 
 ## Segurança e limites
 
-Leia [`SECURITY.md`](SECURITY.md) antes de manipular traces e [`docs/browser-harness-lite.md`](docs/browser-harness-lite.md) para arquitetura e interpretação dos resultados. `AuthorizeView` é apresentação, não uma fronteira de segurança: autorização de recursos deve permanecer no servidor.
+Leia [`SECURITY.md`](SECURITY.md) antes de manipular traces e [`docs/browser-harness-lite.md`](docs/browser-harness-lite.md) para arquitetura e interpretação. `AuthorizeView`, rotas e a sonda DOM são apresentação; autorização de recursos deve permanecer no servidor.
 
 ## Próximas etapas
 
-1. Criar um adapter opt-in de observação para aplicações reais sem endpoints de autenticação sintética.
-2. Validar o contrato com uma aplicação-alvo e fluxo real de IdP/OIDC, sem gravar tokens ou claims.
-3. Ampliar testes de reconexão, múltiplas abas e matriz de render modes, com cobertura versionada.
-4. Só então tratar achados como recomendações específicas para produção; o MVP não promete auditoria abrangente.
+1. Generalizar o runner para conectar a uma app não produtiva fornecida pelo usuário sem assumir fluxo de login ou armazenar credenciais.
+2. Definir e testar uma sonda server-side opt-in que exponha apenas autorização booleana, sem substituir políticas do app.
+3. Validar o contrato com um fluxo IdP/OIDC de teste, sem gravar tokens ou claims.
+4. Ampliar testes de reconexão, múltiplas abas e matriz de render modes; só então tratar achados como recomendações específicas para produção.

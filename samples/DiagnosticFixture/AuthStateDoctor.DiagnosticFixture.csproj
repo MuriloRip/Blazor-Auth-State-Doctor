@@ -7,4 +7,7 @@
     <AnalysisLevel>latest</AnalysisLevel>
     <BlazorDisableThrowNavigationException>true</BlazorDisableThrowNavigationException>
   </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../src/AuthStateDoctor.Blazor/AuthStateDoctor.Blazor.csproj" />
+  </ItemGroup>
 </Project>

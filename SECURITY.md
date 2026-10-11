@@ -2,9 +2,15 @@
 
 ## Escopo
 
-A CLI inspeciona metadados locais e reproduz traces JSON sanitizados. O harness de navegador exercita **somente a fixture sintética deste repositório** em loopback; não autentica em aplicações arbitrárias, não usa credenciais reais, não faz varredura de endpoints e não substitui revisão de autorização.
+A CLI inspeciona metadados locais e reproduz traces JSON sanitizados. O harness Playwright exercita somente a fixture sintética deste repositório em loopback. A biblioteca `AuthStateDoctor.Blazor` oferece um componente explicitamente opt-in para observar o `AuthenticationStateProvider`; ela não autentica, não verifica OIDC e não prova autorização server-side.
 
 O `inspect` é heurístico e não comprova autorização efetiva nem configurações de runtime.
+
+## Adapter opt-in
+
+`<AuthStateProbe>` é desabilitado por padrão. Quando `Enabled=false`, não emite markup e não se inscreve em eventos do provider. Quando explicitamente habilitado, emite um único elemento oculto com `true`, `false` ou `unknown`; não consulta claims, tokens, cookies, nome, e-mail, URL, armazenamento do navegador ou conteúdo de outros elementos. O componente não persiste dados nem faz requests de rede.
+
+Habilite-o apenas em ambientes locais/teste e desative-o em produção. O atributo DOM é legível por JavaScript já executado na mesma origem, de modo que deve ser tratado como um sinal de autenticação. O adapter é uma conveniência de teste, não uma nova boundary de segurança.
 
 ## Limites do harness
 

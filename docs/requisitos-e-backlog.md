@@ -137,3 +137,18 @@ A sequência abaixo organiza os itens existentes por dependência prática; não
 - Quais códigos de saída e níveis de severidade serão usados em terminal, JSON e SARIF.
 - Quais casos documentados exigem full reload e como serão representados no diagnóstico.
 - Quais equipes participarão dos pilotos e como será medida a taxa aceitável de falsos positivos.
+
+
+## 10. Estado de implementação (checkpoint de 2026-10-11)
+
+| Área | Status verificável | Limite atual |
+|---|---|---|
+| Contrato sanitizado e parser | Implementado e coberto por smoke tests. | Só observa os campos v1 definidos. |
+| Fixture Playwright controlada | Implementada em .NET 10 com cookie sintético e E2E local. | Não é login de usuário nem fluxo OIDC. |
+| Probe de componente Blazor | `AuthStateDoctor.Blazor` preview; emite só booleano do `AuthenticationStateProvider`; `Enabled=false` por padrão. | Observa estado de UI, não autorização no servidor. |
+| Comparação UI/servidor | Exercitada separadamente na fixture por sonda e rota protegida. | Ainda não existe endpoint adapter genérico para aplicações externas. |
+| Empacotamento NuGet | Pacote `0.2.0-preview.1` criado e validado localmente. | Não publicado em registry público. |
+| Relatórios e CI | CLI produz terminal/JSON/SARIF; workflow gera artifacts sanitizados. | As execuções do PR #3 terminaram antes de alocar runner (`runner_id=0`, sem logs); CI remota permanece não validada. |
+| OIDC, múltiplas abas e reconexão | Não implementado. | Requer fixture/IdP e matriz de teste dedicada. |
+
+A próxima etapa escolhida é um runner de conexão a uma aplicação não produtiva sem assumir seletores, protocolo de login ou credenciais: observará apenas a sonda opt-in e manterá a autenticação sob controle do desenvolvedor. A integração seguirá em branch/PR, sem publicar o pacote ou modificar `main` diretamente.
