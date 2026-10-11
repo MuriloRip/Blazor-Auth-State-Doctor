@@ -15,7 +15,7 @@
         "required": ["scenarioId", "transition", "elapsedMs", "serverAuthenticated", "uiAuthenticated", "expectation"],
         "properties": {
           "scenarioId": { "type": "string", "pattern": "^[A-Za-z0-9_-]{1,64}$" },
-          "transition": { "enum": ["prerender", "hydrate", "login", "logout", "hard-refresh", "enhanced-navigation", "reconnect", "second-tab"] },
+          "transition": { "enum": ["prerender", "hydrate", "login", "logout", "hard-refresh", "enhanced-navigation", "reconnect", "second-tab", "static-render"] },
           "elapsedMs": { "type": "integer", "minimum": 0, "maximum": 86400000 },
           "serverAuthenticated": { "type": "boolean" },
           "uiAuthenticated": { "type": "boolean" },

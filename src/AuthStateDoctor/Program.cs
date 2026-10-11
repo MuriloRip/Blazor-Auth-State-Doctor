@@ -265,7 +265,7 @@ internal static partial class AuthDoctorCli
     }
 
     private static readonly HashSet<string> AllowedTransitions = new(StringComparer.Ordinal)
-    { "prerender", "hydrate", "login", "logout", "hard-refresh", "enhanced-navigation", "reconnect", "second-tab" };
+    { "prerender", "hydrate", "login", "logout", "hard-refresh", "enhanced-navigation", "reconnect", "second-tab", "static-render" };
 
     private static async Task<byte[]> ReadBoundedAsync(string path)
     {

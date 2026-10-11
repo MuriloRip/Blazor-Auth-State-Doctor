@@ -9,8 +9,13 @@
     <Version>0.2.0-preview.1</Version>
     <Description>Opt-in Blazor authentication-state probe for local diagnostics and test environments.</Description>
     <PackageTags>blazor;authentication;diagnostics;testing</PackageTags>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <RepositoryUrl>https://github.com/MuriloRip/Blazor-Auth-State-Doctor</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
   </PropertyGroup>
   <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <None Update="README.md" Pack="true" PackagePath="/" />
   </ItemGroup>
 </Project>

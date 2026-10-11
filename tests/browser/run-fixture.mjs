@@ -11,6 +11,7 @@ import { fileURLToPath } from 'node:url';
 const here = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(here, '../..');
 const fixtureProject = path.join(repoRoot, 'samples/DiagnosticFixture/AuthStateDoctor.DiagnosticFixture.csproj');
+const staticFixtureProject = path.join(repoRoot, 'samples/StaticSsrFixture/AuthStateDoctor.StaticSsrFixture.csproj');
 const scenarioId = 'synthetic-cookie-fixture';
 const maxWaitMs = 30_000;
 
@@ -72,19 +73,21 @@ async function main() {
   }
 
   let publishDir;
+  let staticPublishDir;
   let child;
+  let staticChild;
   let browser;
   let phase = 'startup';
   const started = performance.now();
   const observations = [];
-  const record = (transition, serverAuthenticated, uiAuthenticated) => {
+  const record = (transition, serverAuthenticated, uiAuthenticated, observedScenarioId = scenarioId) => {
     if (typeof serverAuthenticated !== 'boolean' || typeof uiAuthenticated !== 'boolean') {
       throw new Error('state-not-boolean');
     }
     const elapsedMs = Math.max(observations.at(-1)?.elapsedMs ?? 0, Math.round(performance.now() - started));
     const mismatch = serverAuthenticated !== uiAuthenticated;
     observations.push({
-      scenarioId,
+      scenarioId: observedScenarioId,
       transition,
       elapsedMs: Math.min(elapsedMs, 86_400_000),
       serverAuthenticated,
@@ -106,13 +109,29 @@ async function main() {
     });
     if (publishResult.error || publishResult.status !== 0) throw new Error('fixture-publish-failed');
 
-    const port = await reserveLoopbackPort();
-    const baseUrl = `http://127.0.0.1:${port}`;
-    child = spawn('dotnet', [path.join(publishDir, 'AuthStateDoctor.DiagnosticFixture.dll')], {
+    phase = 'production-guard';
+    const fixtureDll = path.join(publishDir, 'AuthStateDoctor.DiagnosticFixture.dll');
+    const productionGuard = spawnSync('dotnet', [fixtureDll], {
       cwd: publishDir,
       env: {
         ...process.env,
         ASPNETCORE_ENVIRONMENT: 'Production',
+        ASPNETCORE_URLS: 'http://127.0.0.1:0',
+        DOTNET_CLI_TELEMETRY_OPTOUT: '1',
+        DOTNET_NOLOGO: '1'
+      },
+      stdio: 'ignore',
+      timeout: 10_000
+    });
+    if (productionGuard.error || productionGuard.status === 0) throw new Error('probe-production-guard-failed');
+
+    const port = await reserveLoopbackPort();
+    const baseUrl = `http://127.0.0.1:${port}`;
+    child = spawn('dotnet', [fixtureDll], {
+      cwd: publishDir,
+      env: {
+        ...process.env,
+        ASPNETCORE_ENVIRONMENT: 'Testing',
         ASPNETCORE_URLS: baseUrl,
         DOTNET_CLI_TELEMETRY_OPTOUT: '1',
         DOTNET_NOLOGO: '1',
@@ -130,6 +149,14 @@ async function main() {
     });
     if (offOriginResponse.status() !== 404) throw new Error('off-origin-post-accepted');
     const page = await context.newPage();
+    let circuitWebSocketCount = 0;
+    page.on('websocket', socket => {
+      try {
+        if (new URL(socket.url()).pathname.endsWith('/_blazor')) circuitWebSocketCount++;
+      } catch {
+        // Ignore malformed/non-Blazor socket URLs without recording them.
+      }
+    });
     phase = 'initial-render';
     const response = await page.goto(baseUrl, { waitUntil: 'domcontentloaded' });
     if (!response?.ok()) throw new Error('initial-page-failed');
@@ -156,6 +183,7 @@ async function main() {
     phase = 'interactive-event';
     await page.getByTestId('interactive-probe').click();
     await page.waitForFunction(() => document.querySelector('[data-testid="interactive-count"]')?.textContent?.includes('1') === true, null, { timeout: maxWaitMs });
+    if (circuitWebSocketCount === 0) throw new Error('interactive-server-circuit-missing');
     record('hydrate', await readServerState(page), await readUiState(page));
 
     phase = 'login';
@@ -171,12 +199,29 @@ async function main() {
     await waitForUiState(page, true);
     record('hard-refresh', await readServerState(page), await readUiState(page));
 
+    phase = 'second-tab-login';
+    const secondPage = await context.newPage();
+    const secondResponse = await secondPage.goto(baseUrl, { waitUntil: 'domcontentloaded' });
+    if (!secondResponse?.ok()) throw new Error('second-tab-initial-page-failed');
+    await waitForUiState(secondPage, true);
+    record('second-tab', await readServerState(secondPage), await readUiState(secondPage), 'synthetic-second-tab');
+    if (await protectedStatus(secondPage) !== 204) throw new Error('second-tab-protected-probe-denied');
+
     phase = 'logout';
     await postSameOrigin(page, '/_authdoctor/logout');
     await waitForServerState(page, false);
     record('logout', await readServerState(page), await readUiState(page));
     const deniedStatus = await protectedStatus(page);
     if (deniedStatus !== 401) throw new Error('unauthenticated-probe-was-allowed');
+
+    phase = 'second-tab-after-logout';
+    await waitForServerState(secondPage, false);
+    record('second-tab', await readServerState(secondPage), await readUiState(secondPage), 'synthetic-second-tab');
+    if (await protectedStatus(secondPage) !== 401) throw new Error('second-tab-unauthenticated-probe-was-allowed');
+    await secondPage.reload({ waitUntil: 'domcontentloaded' });
+    await waitForUiState(secondPage, false);
+    record('hard-refresh', await readServerState(secondPage), await readUiState(secondPage), 'synthetic-second-tab');
+    await secondPage.close();
 
     phase = 'enhanced-navigation';
     const documentTimeOrigin = await page.evaluate(() => performance.timeOrigin);
@@ -198,6 +243,50 @@ async function main() {
     phase = 'logout-refresh-checkpoint';
     record('hard-refresh', await readServerState(page), await readUiState(page));
 
+    phase = 'publish-static-fixture';
+    await stopChild(child);
+    child = null;
+    staticPublishDir = await mkdtemp(path.join(tmpdir(), 'authdoctor-static-fixture-'));
+    const staticPublishResult = spawnSync('dotnet', [
+      'publish', staticFixtureProject, '--configuration', 'Release', '--nologo', '--output', staticPublishDir
+    ], {
+      cwd: path.dirname(staticFixtureProject),
+      env: { ...process.env, DOTNET_CLI_TELEMETRY_OPTOUT: '1', DOTNET_NOLOGO: '1' },
+      stdio: 'ignore',
+      timeout: 120_000
+    });
+    if (staticPublishResult.error || staticPublishResult.status !== 0) throw new Error('static-fixture-publish-failed');
+    const staticPort = await reserveLoopbackPort();
+    const staticBaseUrl = `http://127.0.0.1:${staticPort}`;
+    staticChild = spawn('dotnet', [path.join(staticPublishDir, 'AuthStateDoctor.StaticSsrFixture.dll')], {
+      cwd: staticPublishDir,
+      env: {
+        ...process.env,
+        ASPNETCORE_ENVIRONMENT: 'Testing',
+        ASPNETCORE_URLS: staticBaseUrl,
+        DOTNET_CLI_TELEMETRY_OPTOUT: '1',
+        DOTNET_NOLOGO: '1',
+        Logging__LogLevel__Default: 'Warning'
+      },
+      stdio: 'ignore'
+    });
+    await waitUntilReady(staticChild, staticBaseUrl);
+
+    phase = 'static-ssr';
+    const socketsBeforeStatic = circuitWebSocketCount;
+    const staticResponse = await page.goto(staticBaseUrl, { waitUntil: 'domcontentloaded' });
+    if (!staticResponse?.ok()) throw new Error('static-ssr-page-failed');
+    await page.getByTestId('static-render').waitFor({ state: 'visible', timeout: maxWaitMs });
+    if (await page.locator('[data-testid="hydration-state"]').count() !== 0
+      || await page.locator('[data-testid="interactive-probe"]').count() !== 0) {
+      throw new Error('static-ssr-contained-interactive-markers');
+    }
+    const staticServerState = await readServerState(page);
+    const staticUiState = await readUiState(page);
+    record('static-render', staticServerState, staticUiState, 'synthetic-static-ssr');
+    await page.waitForTimeout(250);
+    if (circuitWebSocketCount !== socketsBeforeStatic) throw new Error('static-ssr-opened-interactive-circuit');
+
     const trace = { schema: 'authdoctor-trace/v1', observations };
     const serialized = `${JSON.stringify(trace, null, 2)}\n`;
     await mkdir(path.dirname(outputPath), { recursive: true });
@@ -211,7 +300,9 @@ async function main() {
   } finally {
     if (browser) await browser.close().catch(() => {});
     await stopChild(child);
+    await stopChild(staticChild);
     if (publishDir) await rm(publishDir, { recursive: true, force: true }).catch(() => {});
+    if (staticPublishDir) await rm(staticPublishDir, { recursive: true, force: true }).catch(() => {});
   }
 }
 

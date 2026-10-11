@@ -2,6 +2,7 @@ using System.Net;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using AuthStateDoctor.Blazor;
 using AuthStateDoctor.DiagnosticFixture.Components;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -74,11 +75,7 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.UseAntiforgery();
 
-app.MapGet("/_authdoctor/server-state", (HttpContext context) =>
-{
-    context.Response.Headers.CacheControl = "no-store";
-    return Results.Json(new { authenticated = context.User.Identity?.IsAuthenticated == true });
-});
+app.MapAuthStateDoctorServerProbe();
 
 app.MapGet("/_authdoctor/protected-probe", () => Results.NoContent()).RequireAuthorization();
 

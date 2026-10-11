@@ -24,6 +24,7 @@ dotnet pack "$PROBE_PROJECT" --configuration Release --nologo --output "$work/pa
 package="$work/packages/AuthStateDoctor.Blazor.0.2.0-preview.1.nupkg"
 test -s "$package"
 unzip -l "$package" | grep -q 'lib/net10.0/AuthStateDoctor.Blazor.dll'
+unzip -Z -1 "$package" | grep -Fxq 'README.md'
 CLI=(dotnet run --no-build --configuration Release --project "$PROJECT" --)
 
 sample_output="$("${CLI[@]}" test --trace "$ROOT/samples/trace.example.json")"
@@ -112,11 +113,12 @@ import sys
 with open(sys.argv[1], encoding="utf-8") as f:
     report = json.load(f)
 assert report["schema"] == "authdoctor-trace/v1"
-assert report["observationCount"] == 7
+assert report["observationCount"] == 11
 assert report["failures"] == 0
-assert report["expectedReloads"] == 3
+assert report["expectedReloads"] == 4
 transitions = {item["transition"] for item in report["findings"]}
-assert {"prerender", "hydrate", "login", "logout", "enhanced-navigation", "hard-refresh"} <= transitions
+assert {"prerender", "hydrate", "login", "logout", "enhanced-navigation", "second-tab", "hard-refresh", "static-render"} <= transitions
+assert {item["scenarioId"] for item in report["findings"]} == {"synthetic-cookie-fixture", "synthetic-second-tab", "synthetic-static-ssr"}
 
 with open(sys.argv[2], encoding="utf-8") as f:
     sarif = json.load(f)
@@ -125,4 +127,4 @@ assert sarif["$schema"].endswith("sarif-2.1.0.json")
 assert len(sarif["runs"]) == 1
 PY
 
-printf '%s\n' 'Smoke tests passaram: build/pack NuGet local, CLI, inspeção, SARIF, conformance, redação, limites de input e E2E Playwright em fixture .NET 10.'
+printf '%s\n' 'Smoke tests passaram: build/pack NuGet local, CLI, inspeção, SARIF, conformance, redação, limites de input e E2E Playwright com Interactive Server, Static SSR e multiaba.'
