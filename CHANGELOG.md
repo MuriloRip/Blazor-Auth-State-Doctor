@@ -1,18 +1,21 @@
 # Changelog
 
-## Unreleased — primeira versão funcional
+## Unreleased — harness de navegador lite
 
-- CLI .NET 10 com `inspect` para TFM, SDK e render modes detectados por busca local heurística.
-- Contrato JSON `authdoctor-trace/v1` e exemplo sem dados reais.
-- Replay determinístico de checkpoints tipados com classificação de mismatch e expectativa declarada de full reload.
+- Adicionada fixture Blazor Interactive Server .NET 10 com cookie e identidade sintéticos; endpoints de teste restritos a loopback e POST same-origin.
+- Adicionado runner Playwright fixado por lockfile, com publicação temporária e verificação de prerender, hydration, login, logout, probe protegido, enhanced navigation e hard refresh.
+- Runner gera somente o contrato sanitizado `authdoctor-trace/v1`; novos smoke checks cobrem a saída real da fixture, JSON/SARIF, visibilidade HttpOnly, tentativa off-origin e limites do parser.
+- Atualizada a GitHub Action para executar Chromium E2E e guardar artifacts JSON/SARIF sanitizados por sete dias, com permissões mínimas.
+- Documentados os limites do harness e as referências oficiais sobre estado de autenticação e autorização no Blazor.
+
+## MVP inicial — CLI
+
+- CLI .NET 10 com `inspect` heurístico de TFM, SDK e render modes.
+- Contrato JSON de trace e replay determinístico de checkpoints tipados.
 - Saídas terminal, JSON e SARIF; código 1 para divergência não esperada.
-- Limite de 1 MiB, limite de quantidade/profundidade, rejeição de propriedades duplicadas e enums/identificadores restritos.
-- Projeção de campos permitidos: conteúdo extra do input não é copiado para o relatório.
-- Smoke tests sem pacote externo e workflow básico de CI.
-- Documentação de segurança e limitações da versão.
+- Limite de input, rejeição de propriedades duplicadas, enums restritos e projeção de campos permitidos.
+- Smoke tests, schema JSON, amostra e workflow básico de CI.
 
-### Ainda não faz parte desta versão
+## Ainda não faz parte do harness lite
 
-- Automação real de navegador/Playwright, autenticação em aplicação ou coleta de estado server-side.
-- Adapter de integração como pacote NuGet/test SDK.
-- Matriz real de OIDC, cookies, render modes, duas abas e reconexão.
+Não há adapter de integração para aplicações reais, fluxo OIDC/IdP, coleta de tokens/claims, matriz completa de render modes, testes de reconexão/múltiplas abas ou afirmação de cobertura abrangente. Essas etapas exigem integração opt-in e validação com uma aplicação-alvo não produtiva.

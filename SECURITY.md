@@ -1,25 +1,34 @@
-# Segurança e divulgação responsável
+# Política de segurança e divulgação responsável
 
-## Escopo desta versão
+## Escopo
 
-O MVP é uma CLI local de **replay e classificação de traces**. Não autentica usuários, não acessa endpoints da aplicação, não captura cookies/tokens, não executa Playwright e não substitui uma avaliação de segurança ou teste end-to-end. `inspect` faz descoberta local por heurística e não valida autorização efetiva.
+A CLI inspeciona metadados locais e reproduz traces JSON sanitizados. O harness de navegador exercita **somente a fixture sintética deste repositório** em loopback; não autentica em aplicações arbitrárias, não usa credenciais reais, não faz varredura de endpoints e não substitui revisão de autorização.
 
-## Dados e limites
+O `inspect` é heurístico e não comprova autorização efetiva nem configurações de runtime.
 
-- Não forneça tokens, cookies, senhas, claims, nomes ou e-mails reais no trace.
-- O leitor aceita no máximo 1 MiB, 10.000 observações e profundidade JSON limitada.
-- Somente campos tipados e validados são projetados no relatório; campos adicionais no JSON são ignorados e não são copiados.
-- Identificadores são limitados a caracteres ASCII seguros e transições usam vocabulário fechado.
-- Saídas não incluem caminho absoluto, texto original, headers, mensagens de exceção externas ou conteúdo livre do trace.
-- Relatórios JSON/SARIF escritos com `--output` ficam no caminho indicado pelo operador; proteja esse arquivo segundo as políticas do seu CI.
+## Limites do harness
 
-## Uso seguro
+- O runner publica a fixture em diretório temporário e inicia o processo em `127.0.0.1` numa porta efêmera.
+- Os endpoints de teste rejeitam conexões não loopback; operações POST exigem `Origin` same-origin, verificado por teste negativo.
+- O endpoint de login não pede senha: cria apenas um principal sintético. Não copie a fixture para produção.
+- O cookie é HttpOnly, SameSite=Strict, não deslizante e expira em 15 minutos. O teste verifica a invisibilidade em `document.cookie` sem ler/imprimir o valor.
+- As sondas retornam somente um booleano de estado e status HTTP de uma rota protegida. O trace contém identificador sintético, transição, tempo relativo, dois booleanos e expectativa.
+- O runner não grava nem imprime HTML, texto livre da página, cookies, tokens, claims, IPs, corpos de request ou logs do app. Arquivo do trace usa permissões owner-only onde suportado.
+- Navegador, processo filho e publish temporário são fechados/removidos ao finalizar.
 
-1. Use contas e ambientes de teste não produtivos.
-2. Armazene credenciais apenas no secret manager do CI (o MVP atual não consome credenciais).
-3. Revise traces antes de compartilhá-los e use valores sintéticos.
-4. Execute a ferramenta com permissões mínimas e mantenha SDK/runtime atualizados.
-5. Trate diagnósticos como evidência para investigação, não como prova de vulnerabilidade ou de conformidade total.
+Loopback reduz exposição, mas não isola processos locais do mesmo usuário. Não rode a fixture em host compartilhado ou acessível externamente.
+
+## Dados, parser e relatórios
+
+- Nunca inclua tokens, cookies, senhas, claims, nomes/e-mails reais, conteúdo de página ou URLs com credenciais em traces.
+- O leitor limita o input a 1 MiB, 10.000 observações e profundidade JSON restrita; rejeita propriedades duplicadas, tempos não monotônicos por cenário e transições fora do vocabulário.
+- Só campos tipados e validados são projetados para terminal, JSON e SARIF. Campos extras são ignorados e não ecoados.
+- Saídas não contêm caminhos absolutos, texto original ou mensagem externa de exceção. Os artifacts sintéticos da CI têm retenção de sete dias.
+- Relatórios locais especificados por `--output` ficam sob controle do operador; proteja-os segundo a política do seu CI.
+
+## Autorização
+
+`AuthorizeView`/rotas protegidas determinam o que a UI apresenta; não são uma fronteira de segurança para recursos. Aplicações reais devem autorizar cada operação no servidor segundo sua política. A fixture inclui uma sonda server-side separada que valida essa diferença.
 
 ## Reportar vulnerabilidades
 

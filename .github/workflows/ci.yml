@@ -10,13 +10,31 @@ permissions:
 jobs:
   build-and-smoke:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 20
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
       - name: Setup .NET
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v6
         with:
           dotnet-version: 10.0.x
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22.x
+          cache: npm
+          cache-dependency-path: tests/browser/package-lock.json
+      - name: Install browser harness
+        run: |
+          npm ci --prefix tests/browser --ignore-scripts --no-audit --no-fund
+          cd tests/browser && npx playwright install --with-deps chromium
       - name: Build and smoke tests
-        run: bash tests/smoke.sh
+        run: AUTHDOCTOR_ARTIFACT_DIR=artifacts bash tests/smoke.sh
+      - name: Upload sanitized diagnostic artifacts
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: authdoctor-sanitized-diagnostics
+          path: artifacts/
+          if-no-files-found: ignore
+          retention-days: 7

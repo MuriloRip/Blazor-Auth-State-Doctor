@@ -1,0 +1,29 @@
+﻿@inherits LayoutComponentBase
+
+<header>
+    <nav aria-label="Fixture navigation">
+        <NavLink href="/" Match="NavLinkMatch.All" data-testid="nav-home">Início</NavLink>
+        <NavLink href="/protected" data-testid="nav-protected">Área protegida sintética</NavLink>
+    </nav>
+    <AuthorizeView>
+        <Authorized>
+            <div data-testid="auth-state" data-authenticated="true">Autenticado</div>
+        </Authorized>
+        <NotAuthorized>
+            <div data-testid="auth-state" data-authenticated="false">Não autenticado</div>
+        </NotAuthorized>
+        <Authorizing>
+            <div data-testid="auth-state" data-authenticated="unknown">Verificando</div>
+        </Authorizing>
+    </AuthorizeView>
+</header>
+
+<main>
+    @Body
+</main>
+
+<div id="blazor-error-ui" data-nosnippet>
+    Ocorreu um erro inesperado na fixture.
+    <a href="." class="reload">Recarregar</a>
+    <span class="dismiss">×</span>
+</div>
